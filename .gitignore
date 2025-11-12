@@ -1,0 +1,32 @@
+# Large data and caches
+data/
+
+# Release assets
+myModel/
+features_data/
+
+# Case Study outputs
+AlloFusion-main/Case Study/*.npz
+AlloFusion-main/Case Study/*_dataset.pkl
+AlloFusion-main/Case Study/*_allosteric_residues.txt
+AlloFusion-main/Case Study/*_allosteric_sites.pml
+
+# Env files
+.env.topoallofusion
+
+# Do-not-read directories/files
+DO_NOT_READ/
+do_not_read
+
+# macOS system files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+.fseventsd
+.DocumentRevisions-V100
+.TemporaryItems
+.VolumeIcon.icns

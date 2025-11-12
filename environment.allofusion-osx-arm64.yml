@@ -1,0 +1,53 @@
+name: allofusion
+channels:
+  - pytorch
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # Core
+  - python=3.11
+  - pip
+
+  # Fixed BLAS backend to avoid ABI mismatches
+  - libblas=*=*openblas
+  - liblapack=*=*openblas
+
+  # Numerics and JIT (compatible versions)
+  - numpy=1.26.*
+  - scipy=1.11.*
+  - numba
+
+  # IO / parsing / graphs
+  - biopython=1.81
+  - networkx=3.2.*
+  - babel=2.11.0
+  - gemmi=0.6.0
+  - openbabel=3.1.1
+  - pymol-open-source=2.5.0
+  - pandas>=2.0
+  - requests
+  - sentencepiece
+
+  # ML stack pinned to AlloFusion's version
+  - pytorch=2.6.0
+  - torchvision=0.21.0
+  - torchaudio=2.6.0
+
+  - matplotlib
+  - scikit-learn
+
+  # Optional: PSIBLAST for PSSM — not available on osx-arm64 via bioconda; install via Homebrew if needed:
+  #   brew install blast
+  # Then ensure `psiblast` is on PATH.
+
+  - pip:
+      - transformers==4.42.4
+      - tokenizers>=0.15
+      - prody==2.6.1
+      - tensorflow==2.19.0
+      - jupyterlab
+      - pdbe-arpeggio==1.4.2
+      - keras-tuner
+      - llvmlite
+      - sentencepiece

@@ -1,0 +1,55 @@
+name: allofusion-cuda121
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+  - bioconda
+  - defaults
+dependencies:
+  # Core - Python 3.11 to match original AlloFusion
+  - python=3.11
+  - pip
+
+  # Fixed BLAS backend to avoid ABI mismatches
+  - libblas=*=*openblas
+  - liblapack=*=*openblas
+
+  # Numerics and JIT
+  - numpy=1.26.*
+  - scipy=1.11.*
+  - numba
+
+  # IO / parsing / graphs
+  - biopython=1.81
+  - networkx=3.2.*
+  - babel=2.11.0
+  - gemmi=0.6.0
+  - openbabel=3.1.1
+  - pymol-open-source=2.5.0
+  - pandas>=2.0
+  - requests
+
+  # Optional: PSIBLAST for PSSM
+  - blast=2.15.*
+
+  - matplotlib
+  - scikit-learn
+
+  - pip:
+      # PyTorch with CUDA 12.1 support (pip more reliable than conda for CUDA)
+      - --extra-index-url https://download.pytorch.org/whl/cu121
+      - torch==2.6.0
+      - torchvision==0.21.0
+      - torchaudio==2.6.0
+      # TensorFlow with CUDA support
+      - tensorflow[and-cuda]
+      # Other dependencies
+      - transformers==4.42.4
+      - tokenizers>=0.15
+      - prody==2.6.1
+      - jupyterlab
+      - ipykernel
+      - pdbe-arpeggio==1.4.2
+      - keras-tuner
+      - sentencepiece
+      - llvmlite
