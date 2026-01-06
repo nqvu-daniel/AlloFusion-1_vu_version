@@ -6,10 +6,15 @@ from Bio.PDB.MMCIF2Dict import MMCIF2Dict
 def sequence_indices(pdb_id: str, chain_id: str):
     # Download the mmCIF file
     mmcif_url = f"https://files.rcsb.org/download/{pdb_id.lower()}.cif"
-    response = requests.get(mmcif_url)
+    try:
+        response = requests.get(mmcif_url, timeout=3)
+    except Exception as e:
+        print(f"Error: Unable to download the mmCIF file ({e}).")
+        return {}
 
     if response.status_code != 200:
         print("Error: Unable to download the mmCIF file.")
+        return {}
     else:
         mmcif_file = io.StringIO(response.text)
 

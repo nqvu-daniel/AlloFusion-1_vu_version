@@ -1,0 +1,25 @@
+name: allofusion
+channels:
+  - conda-forge
+  - pytorch
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - pandas
+  - scipy
+  - networkx
+  - scikit-learn
+  - joblib
+  - requests
+  - biopython
+  - dssp  # provides mkdssp for DSSP-based secondary structure/RSA
+  - pytorch
+  - transformers
+  - huggingface_hub
+  - sentencepiece
+  - tqdm
+  - pip:
+      # TensorFlow for the 1D-CNN predictor (macOS arm64 wheels are available on PyPI).
+      # Pin to a version that has macOS arm64 wheels for Python 3.11.
+      - tensorflow==2.19.0

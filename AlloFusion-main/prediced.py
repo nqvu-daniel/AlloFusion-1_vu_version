@@ -167,14 +167,20 @@ def predict_allosteric_sites(pdb_id, chain_id):
         _extend_scaler_for_extra_features(scaler, diff)
     X_test = scaler.transform(X_test)
     feat_shape = X_test[0].size
-    # Helpful diagnostic: confirm feature dimensionality matches expected 1047 (=1024+20+3)
     try:
-        exp_msg = "[INFO] Feature dim: {} (expected 1047 = 1024+20+3)".format(
-            feat_shape
-        )
-        print(exp_msg)
-        if feat_shape != 1047:
-            print("[WARN] Feature dim != 1047. If 1044, bio features may be missing.")
+        expected_map = {
+            1047: "baseline (1024+20+3)",
+            1050: "baseline + DCI(2) + betweenness(1)",
+            1058: "baseline + StingAllo(11)",
+            1060: "baseline + DCI(2) + MSF(1) + CFbetw(1) + CFclose(1) + LapPE(8)",
+            1061: "baseline + StingAllo(11) + DCI(2) + betweenness(1)",
+            1071: "baseline + StingAllo(11) + extended topology(+13)",
+        }
+        exp = expected_map.get(int(feat_shape))
+        if exp:
+            print(f"[INFO] Feature dim: {feat_shape} ({exp})")
+        else:
+            print(f"[INFO] Feature dim: {feat_shape}")
     except Exception:
         pass
 
@@ -295,41 +301,77 @@ def predict_allosteric_sites(pdb_id, chain_id):
     else:
         # CNN weights directory - check env var or use default under data/
         cnn_weights_dir = os.environ.get("ALLOFUSION_CNN_WEIGHTS_DIR")
+        preferred_dim = None
+        try:
+            preferred_dim = int(feat_shape)
+        except Exception:
+            preferred_dim = None
         if cnn_weights_dir:
-            weights_search = [
-                os.path.join(cnn_weights_dir, "trial1.h5"),
-                os.path.join(cnn_weights_dir, "all_1050d.h5"),
-                os.path.join(cnn_weights_dir, "originalallofusion.h5"),
-                os.path.join(cnn_weights_dir, "all.h5"),
-            ]
+            weights_search = []
+            if preferred_dim is not None:
+                weights_search.append(os.path.join(cnn_weights_dir, f"all_{preferred_dim}d.h5"))
+            weights_search.extend(
+                [
+                    os.path.join(cnn_weights_dir, "trial1.h5"),
+                    os.path.join(cnn_weights_dir, "trial1_final_model.h5"),
+                    os.path.join(cnn_weights_dir, "all_1050d.h5"),
+                    os.path.join(cnn_weights_dir, "all_1060d.h5"),
+                    os.path.join(cnn_weights_dir, "originalallofusion.h5"),
+                    os.path.join(cnn_weights_dir, "all.h5"),
+                ]
+            )
         else:
             # Default: data/cnn_weights/ with legacy fallback
-            weights_search = [
-                os.path.join("data", "cnn_weights", "trial1.h5"),
-                os.path.join("data", "cnn_weights", "all_1050d.h5"),
-                os.path.join("data", "cnn_weights", "originalallofusion.h5"),
-                os.path.join("data", "cnn_weights", "all.h5"),
-                os.path.join("myModel", "trial1.h5"),
-                os.path.join("myModel", "all_1050d.h5"),
-                os.path.join("myModel", "originalallofusion.h5"),
-                os.path.join("myModel", "all.h5"),
-                os.path.join(os.path.dirname(__file__), "myModel", "trial1.h5"),
-                os.path.join(os.path.dirname(__file__), "myModel", "all_1050d.h5"),
-                os.path.join(
-                    os.path.dirname(__file__), "myModel", "originalallofusion.h5"
-                ),
-                os.path.join(os.path.dirname(__file__), "myModel", "all.h5"),
-            ]
+            weights_search = []
+            if preferred_dim is not None:
+                weights_search.extend(
+                    [
+                        os.path.join("data", "cnn_weights", f"all_{preferred_dim}d.h5"),
+                        os.path.join("myModel", f"all_{preferred_dim}d.h5"),
+                        os.path.join(os.path.dirname(__file__), "myModel", f"all_{preferred_dim}d.h5"),
+                    ]
+                )
+            weights_search.extend(
+                [
+                    os.path.join("data", "cnn_weights", "trial1.h5"),
+                    os.path.join("data", "cnn_weights", "trial1_final_model.h5"),
+                    os.path.join("data", "cnn_weights", "all_1050d.h5"),
+                    os.path.join("data", "cnn_weights", "all_1060d.h5"),
+                    os.path.join("data", "cnn_weights", "originalallofusion.h5"),
+                    os.path.join("data", "cnn_weights", "all.h5"),
+                    os.path.join("myModel", "trial1.h5"),
+                    os.path.join("myModel", "trial1_final_model.h5"),
+                    os.path.join("myModel", "all_1050d.h5"),
+                    os.path.join("myModel", "all_1060d.h5"),
+                    os.path.join("myModel", "originalallofusion.h5"),
+                    os.path.join("myModel", "all.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "trial1.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "trial1_final_model.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "all_1050d.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "all_1060d.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "originalallofusion.h5"),
+                    os.path.join(os.path.dirname(__file__), "myModel", "all.h5"),
+                ]
+            )
         weights_path = _first_existing(weights_search)
     if not weights_path:
         raise FileNotFoundError(
             "Missing CNN weights. Provide via:\n"
             "  - ALLOFUSION_CNN_WEIGHTS_FILE=/path/to/your_model.h5\n"
-            "  - or ALLOFUSION_CNN_WEIGHTS_DIR=/path/with/{trial1,all_1050d,originalallofusion,all}.h5\n"
+            "  - or ALLOFUSION_CNN_WEIGHTS_DIR=/path/with/{trial1,all_<DIM>d,originalallofusion,all}.h5\n"
             "  - or download: python scripts/fetch_release_assets.py --repo hjb-001/AlloFusion --pattern 'trial1.h5' --dest data/cnn_weights\n"
         )
     print(f"[INFO] Loading CNN weights from: {weights_path}")
-    cnn_model.load_weights(weights_path)
+    try:
+        cnn_model.load_weights(weights_path)
+    except Exception as e:
+        raise RuntimeError(
+            "Failed to load CNN weights. This is commonly caused by a feature-dimension mismatch.\n"
+            f"  - Feature dim in dataset: {feat_shape}\n"
+            f"  - Weights file: {weights_path}\n"
+            "If you enabled topology augmentation, you need CNN weights trained for that feature dim "
+            "(e.g., 1050D for DCI+betweenness, 1060D for extended topology with LapPE k=8)."
+        ) from e
     Inde_test_prob = cnn_model.predict(X_test)
 
     # Threshold for classification (default 0.5), overridable via env
@@ -354,22 +396,54 @@ def predict_allosteric_sites(pdb_id, chain_id):
 
     # generate pml file
     def generate_pml_content(pdb_code, chain_name, prediction_data):
-        pml_content = f"# PyMOL script to highlight allosteric sites in {pdb_code}\n"
-        pml_content += f"fetch {pdb_code}\n"
-        pml_content += "hide everything\n"
-        pml_content += f"show cartoon, chain {chain_name}\n"
-        pml_content += f"color spectrum, chain {chain_name}\n"
+        # Build residue selection string
+        resi_str = "+".join(map(str, prediction_data)) if prediction_data else "none"
 
-        # Process only the first prediction ("1")
-        for res_num in prediction_data:
-            pml_content += f"select resi {res_num} and chain {chain_name}\n"
-            pml_content += f"show surface, resi {res_num} and chain {chain_name}\n"
-            pml_content += f"color red, resi {res_num} and chain {chain_name}\n"
-            pml_content += (
-                f"set transparency, 0.2, resi {res_num} and chain {chain_name}\n"
-            )
+        pml_content = f"""# PyMOL script for AlloFusion predictions
+# PDB: {pdb_code}
+# Chain: {chain_name}
+# Predicted residues: {len(prediction_data)}
 
-        pml_content += f"zoom chain {chain_name}\n"
+# Fetch structure from PDB
+fetch {pdb_code}, async=0
+
+# Basic visualization setup
+hide everything
+show cartoon
+color gray60, all
+set cartoon_transparency, 0.3
+bg_color white
+
+# Define predicted residue selection
+select predicted_residues, (chain {chain_name} and resi {resi_str})
+
+# Visualize predicted residues as spheres
+show spheres, predicted_residues and name CA
+set sphere_scale, 1.5, predicted_residues and name CA
+color red, predicted_residues and name CA
+set sphere_transparency, 0.0, predicted_residues
+
+# Hide ligands
+hide everything, organic
+hide everything, inorganic
+hide everything, solvent
+
+# Set optimal view
+zoom chain {chain_name}
+orient
+
+# Ray-traced rendering settings
+set ray_shadows, 0
+set antialias, 2
+set ambient, 0.4
+set specular, 0.5
+
+# Render image
+ray 2400, 2400
+png {pdb_code}_allosteric_sites.png, dpi=300
+
+print 'AlloFusion visualization complete for {pdb_code}!'
+"""
         return pml_content
 
     pml_content = generate_pml_content(pdb_id, chain_id, afr_sites)

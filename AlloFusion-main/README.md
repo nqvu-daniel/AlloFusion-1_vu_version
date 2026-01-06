@@ -5,7 +5,7 @@ The AlloFusion program is a method for protein allosteric site prediction.
 
 
 ## Requirement
-- python 3.11
+- python 3.10+
 
 - numpy  1.26.4
 
@@ -13,18 +13,44 @@ The AlloFusion program is a method for protein allosteric site prediction.
 
 - joblib  1.4.0
 
-- ProDy  2.4.1
+- ProDy  2.4.1 (optional; used for topology parsing if installed)
 
 - torch  2.5.0+cu118
 
 - tensorflow  2.12.0
 
 - transformers  4.42.4
+	
+- networkx (required for graph-based features)
+	
+- scipy (required for current-flow betweenness/closeness)
 
+- dssp / mkdssp (recommended for StingAllo RSA + secondary structure; falls back if missing)
+	
   
 ---
 
+## Reproducible setup (macOS Apple Silicon + conda)
 
+This repo includes a ready-to-use conda environment file and a bootstrap script:
+
+1) Create/update the environment:
+- `bash scripts/bootstrap_osx_arm64.sh`
+
+2) Activate:
+- `conda activate allofusion`
+
+3) Quick smoke test (topology + StingAllo only; no ProtT5/TensorFlow models needed):
+- `python scripts/smoke_features.py --pdb 4ZSI_gnm_zs.pdb --chain A`
+
+Notes:
+- `mkdssp` comes from `conda-forge::dssp`. If it’s missing, StingAllo will fall back (still fixed dims).
+- `psiblast` is provided by NCBI BLAST+. On macOS arm64, the simplest install is Homebrew: `brew install blast`. Then download/configure a BLAST DB for PSSM (see below).
+- For full runs (ProtT5 embeddings), download the model locally and set `PROT_T5_PATH`:
+  - `python scripts/prefetch_prot_t5.py --repo Rostlab/prot_t5_xl_uniref50 --dest data/models/prot_t5_xl_uniref50`
+  - `export PROT_T5_PATH=$PWD/data/models/prot_t5_xl_uniref50`
+	
+	
 ## To run the AlloFusion, you need to install the bioinformatics tools and download the corresponding databases.
 （1）Download the prot_t5_xl_uniref50 model from the following link:
 	 	https://huggingface.co/Rostlab/prot_t5_xl_uniref50/tree/main  
@@ -35,19 +61,17 @@ The AlloFusion program is a method for protein allosteric site prediction.
 
 Automation (Enhanced AlloFusion)
 - Download BLAST databases via script (requires BLAST+):
-  - SwissProt curated DB: `bash scripts/setup_blast_db.sh --dir /path/to/blastdb --dbs swissprot`
+  - SwissProt curated DB: `bash scripts/setup_blast_db.sh --dir /path/to/blastdb --db swissprot`
   - Then set env for AlloFusion PSSM:
     - `export BLAST_DB=/path/to/blastdb/swissprot/swissprot`
     - or `export BLASTDB=/path/to/blastdb` and `export BLAST_DB_NAME=swissprot`
-- Fetch model weights and datasets from Releases:
-  - CNN weights: `python scripts/fetch_release_assets.py --repo hjb-001/AlloFusion --pattern trial1.h5 --dest myModel` (legacy name `all.h5` also supported)
-  - Datasets: `python scripts/fetch_release_assets.py --repo hjb-001/AlloFusion --pattern 'train_dataset_*.pkl' --dest features_data/diversity`
-  - If assets are zipped, download and extract them into the indicated folders.
+- CNN weights:
+  - This repo includes `myModel/trial1_final_model.h5` (baseline weights); you can also point to any `.h5` via `--weights /path/to/model.h5`.
 
 Optional Topology Augmentation (DCI + Betweenness)
 - What: Append per-residue DCI (2D) + betweenness (1D) to baseline features (ProtT5 1024D + PSSM 20D + Bio 3D) → 1050D total.
 - How: Enable at runtime; defaults preserve baseline behavior.
-- Dependencies: `prody` (DCI) and `networkx` (graph centralities). Install via your environment file or `pip install prody networkx`.
+- Dependencies: `networkx` (+ `scipy` for current-flow); `prody` is optional (a lightweight PDB parser fallback is included). Install via your environment file or `pip install networkx scipy prody`.
 - CLI usage:
   - Example (feature build + prediction with matching weights):
     - `python AlloFusionMain.py --PDBID 4ZSI --CHAIN B --use-dci-betweenness --cutoff 8.0 --sigma 4.0 --weights myModel/all_1050d.h5`
@@ -57,13 +81,28 @@ Optional Topology Augmentation (DCI + Betweenness)
   - If you enable `--use-dci-betweenness`, ensure your CNN weights were trained for 1050D inputs; otherwise weight loading will fail.
   - The default run (without the flag) uses 1047D features and baseline weights.
 
+Extended Topology Augmentation (DCI + MSF + current-flow + LapPE)
+- What: Append an extended bundle: DCI (2D) + MSF (1D) + current-flow betweenness (1D) + current-flow closeness (1D) + Laplacian positional encoding (k dims).
+  - Added dims = `2 + 1 + 1 + 1 + k = (5 + k)` per residue.
+  - With default `--lap-pe-k 8`: 1047D + 13D = **1060D** total.
+- How: Enable with `--use-topo-extended` (and optionally `--lap-pe-k`, `--lap-pe-normalize`).
+- Notes:
+  - Feature dims change if you change `--lap-pe-k`; weights must match the exact dim.
+  - Sequence-index alignment uses mmCIF download when available; if that fails (e.g., offline), features fall back to Cα order (still fixed dims via padding).
+
+StingAllo-inspired Structural Features (11D)
+- What: Append per-residue 11D structural descriptors inspired by STINGAllo (distance to centroid, local density, hydrophobic contact ratio, secondary structure one-hot, RSA, B-factor, graph centralities).
+  - Added dims = **+11D** per residue.
+  - Baseline 1047D → **1058D** when enabled alone.
+  - With `--use-dci-betweenness`: 1050D + 11D → **1061D**.
+  - With `--use-topo-extended` and default `--lap-pe-k 8`: 1060D + 11D → **1071D**.
+- How: Enable with `--use-stingallo`.
+- Notes:
+  - Some sub-features may fall back to safe defaults when external tools are missing (e.g., DSSP/STRIDE for secondary structure); dims stay fixed via padding/zeros.
+
 One-command bootstrap
 - Mac (ARM64):
-  - `bash scripts/bootstrap_cloud.sh --env-yml environment.allofusion-osx-arm64.yml --blast-dir data/blast --dbs swissprot --model-dir data/models/prot_t5_xl_uniref50`
-  - `source setup_env.sh`
-- CUDA 12.1:
-  - `bash scripts/bootstrap_cloud.sh --env-yml environment.allofusion-cuda121.yml --blast-dir data/blast --dbs swissprot --model-dir data/models/prot_t5_xl_uniref50`
-  - `source setup_env.sh`
+  - `bash scripts/bootstrap_osx_arm64.sh`
 
 
 
