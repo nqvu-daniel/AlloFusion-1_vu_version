@@ -1,15 +1,26 @@
 # Large data and caches
 data/
 
+# Local tooling/helpers
+.tools/
+
+# Python caches
+__pycache__/
+*.pyc
+
 # Release assets
 myModel/
 features_data/
 
 # Case Study outputs
+AlloFusion-main/Case Study/
 AlloFusion-main/Case Study/*.npz
 AlloFusion-main/Case Study/*_dataset.pkl
 AlloFusion-main/Case Study/*_allosteric_residues.txt
 AlloFusion-main/Case Study/*_allosteric_sites.pml
+
+# Local example/derived PDBs
+AlloFusion-main/*_gnm_zs.pdb
 
 # Env files
 .env.topoallofusion
