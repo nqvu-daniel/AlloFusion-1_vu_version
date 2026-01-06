@@ -240,8 +240,10 @@ def _validate_prot_t5_path():
             "  python scripts/prefetch_prot_t5.py --repo Rostlab/prot_t5_xl_uniref50 --dest data/models/prot_t5_xl_uniref50\n"
             "Then set:\n"
             "  export PROT_T5_PATH=/path/to/data/models/prot_t5_xl_uniref50\n"
-            "Or run the macOS bootstrap:\n"
-            "  bash scripts/bootstrap_osx_arm64.sh"
+            "Or run the repo bootstrap from the repo root:\n"
+            "  cd ..\n"
+            "  bash scripts/bootstrap_cloud.sh --env-yml environment.allofusion-osx-arm64.yml --blast-dir data/blast --dbs swissprot --model-dir data/models/prot_t5_xl_uniref50\n"
+            "  source setup_env.sh"
         )
 
     # Check if path exists

@@ -32,23 +32,26 @@ The AlloFusion program is a method for protein allosteric site prediction.
 
 ## Reproducible setup (macOS Apple Silicon + conda)
 
-This repo includes a ready-to-use conda environment file and a bootstrap script:
+Use the repo-root bootstrap script (recommended). From the repo root (folder that contains `scripts/bootstrap_cloud.sh`):
 
-1) Create/update the environment:
-- `bash scripts/bootstrap_osx_arm64.sh`
+```bash
+cd /Users/danielqvu/Documents/RESEARCH/ALLOSTERIC/vendor/TopoAlloFusion-1
 
-2) Activate:
-- `conda activate allofusion`
+bash scripts/bootstrap_cloud.sh \
+  --env-yml environment.allofusion-osx-arm64.yml \
+  --blast-dir data/blast \
+  --dbs swissprot \
+  --model-dir data/models/prot_t5_xl_uniref50
 
-3) Quick smoke test (topology + StingAllo only; no ProtT5/TensorFlow models needed):
-- `python scripts/smoke_features.py --pdb 4ZSI_gnm_zs.pdb --chain A`
+source setup_env.sh
+
+cd AlloFusion-main
+python AlloFusionMain.py --PDBID 4ZSI --CHAIN B
+```
 
 Notes:
-- `mkdssp` comes from `conda-forge::dssp`. If it’s missing, StingAllo will fall back (still fixed dims).
-- `psiblast` is provided by NCBI BLAST+. On macOS arm64, the simplest install is Homebrew: `brew install blast`. Then download/configure a BLAST DB for PSSM (see below).
-- For full runs (ProtT5 embeddings), download the model locally and set `PROT_T5_PATH`:
-  - `python scripts/prefetch_prot_t5.py --repo Rostlab/prot_t5_xl_uniref50 --dest data/models/prot_t5_xl_uniref50`
-  - `export PROT_T5_PATH=$PWD/data/models/prot_t5_xl_uniref50`
+- For StingAllo SS/RSA, install DSSP (`mkdssp`) into the active conda env: `conda install -c conda-forge dssp` (otherwise StingAllo falls back to safe defaults).
+- The bootstrap script writes `.env.allofusion` and `setup_env.sh` and configures `PROT_T5_PATH`, `BLASTDB`, and `BLAST_DB` for you.
 	
 	
 ## To run the AlloFusion, you need to install the bioinformatics tools and download the corresponding databases.
@@ -61,10 +64,10 @@ Notes:
 
 Automation (Enhanced AlloFusion)
 - Download BLAST databases via script (requires BLAST+):
-  - SwissProt curated DB: `bash scripts/setup_blast_db.sh --dir /path/to/blastdb --db swissprot`
+  - SwissProt curated DB: `bash ../scripts/setup_blast_db.sh --dir /path/to/blastdb --dbs swissprot`
   - Then set env for AlloFusion PSSM:
-    - `export BLAST_DB=/path/to/blastdb/swissprot/swissprot`
-    - or `export BLASTDB=/path/to/blastdb` and `export BLAST_DB_NAME=swissprot`
+    - `export BLAST_DB=/path/to/blastdb/swissprot`
+    - and optionally `export BLAST_DB_NAME=swissprot`
 - CNN weights:
   - This repo includes `myModel/trial1_final_model.h5` (baseline weights); you can also point to any `.h5` via `--weights /path/to/model.h5`.
 
@@ -102,7 +105,7 @@ StingAllo-inspired Structural Features (11D)
 
 One-command bootstrap
 - Mac (ARM64):
-  - `bash scripts/bootstrap_osx_arm64.sh`
+  - From repo root: `bash scripts/bootstrap_cloud.sh --env-yml environment.allofusion-osx-arm64.yml --blast-dir data/blast --dbs swissprot --model-dir data/models/prot_t5_xl_uniref50`
 
 
 
